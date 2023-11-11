@@ -1,0 +1,94 @@
+#/bin/bash
+# This is the main capture script controler
+
+sitename="BlastBeach"
+# create log dir
+mkdir -p "/home/picam_blast/rpi5_multicam_testing/logs/"
+
+# Define where your code is located
+workdir="/home/picam_blast/rpi5_multicam_testing"
+echo "Current work dir is : "$workdir
+
+# Get the current date
+date=$(date)
+datestr=$(date +'%Y%m%d_%H%M')
+echo "Current date is : "$date
+
+# Your configuration file
+cfg="/home/picam_blast/rpi5_multicam_testing/camera_config.json"
+echo "Capture config file is : "$cfg
+
+# Change to current work directory
+cd $workdir
+
+# Current cycle log file
+log="/home/picam_blast/rpi5_multicam_testing/logs/picoastal_"$datestr".log"
+echo "Log file is : "$log
+
+# Call the capture script
+capdate=$(date +'%Y%m%d_%H00')
+echo $capdate
+script=captureProcess.py
+echo "Calling script : "$script
+python3 $workdir/src/$script $cfg > $log 2>&1 &
+
+wait
+
+python3 checkVoltage.py
+
+wait
+
+# Source and destination directories
+source_dir="/home/picam_blast/rpi5_multicam_testing/data/BlastBeach"
+destination_dir="/media/picam_blast/Extreme SSD/data/BlastBeach"
+
+# Create destination directory if it doesn't exist
+mkdir -p "$destination_dir"
+
+# Copy contents from source to destination
+cp -r "$source_dir"/* "$destination_dir"/
+
+echo "Contents copied successfully from $source_dir to $destination_dir"
+
+# Upload image products to AWS
+folder_name=$(ls -d "$workdir"/data/$sitename/)
+s3_bucket="s3://argusblastbeach"
+s3cmd put --recursive "$folder_name" "$s3_bucket"
+
+if [ $? -eq 0 ]; then
+echo "Transferred images succesfully"
+rm -r data/$sitename
+else
+echo "Image transfer error"
+fi
+
+# Move logs to AWS
+folder_name2=$(ls -d "$workdir"/logs/)
+s3cmd put --recursive "$folder_name2" "$s3_bucket"
+
+
+# Source and destination directories
+source_dir="/home/picam_blast/rpi5_multicam_testing/logs"
+destination_dir="/media/picam_blast/Extreme SSD/logs"
+
+# Create destination directory if it doesn't exist
+mkdir -p "$destination_dir"
+
+# Copy contents from source to destination
+cp -r "$source_dir"/* "$destination_dir"/
+
+echo "Contents copied successfully from $source_dir to $destination_dir"
+
+if [ $? -eq 0 ]; then
+echo "Transferred logs succesfully"
+rm -r logs/*
+else
+echo "Log transfer error"
+fi
+
+wait
+
+flag_file="/home/picam_blast/rpi5_multicam_testing/shutdown_flag_on"
+if [ -f "$flag_file" ]; then
+sudo shutdown -h now
+fi

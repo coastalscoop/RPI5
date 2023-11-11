@@ -1,0 +1,16 @@
+{
+    "camera_settings": [
+        {
+            "camera_id": 0,
+            "size": [2688, 2048],
+            "frame_rate": 1,
+            "duration": 20
+        },
+        {
+            "camera_id": 1,
+            "size": [2688, 2048],
+            "frame_rate": 1,
+            "duration": 20
+        }
+    ]
+}
